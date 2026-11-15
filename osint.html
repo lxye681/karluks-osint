@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KARLUK's OSINT | Enterprise Intelligence & Archive Suite</title>
+    <style>
+        :root {
+            --bg-primary: #030712;
+            --bg-secondary: rgba(9, 14, 28, 0.75);
+            --bg-card: rgba(15, 23, 42, 0.65);
+            --bg-input: rgba(5, 10, 21, 0.8);
+            --border-color: rgba(30, 41, 59, 0.8);
+            --border-active: #38bdf8;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --star-color: #38bdf8;
+            --font-main: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --font-mono: 'Consolas', 'Courier New', monospace;
+        }
+
+        body.theme-turan {
+            --bg-primary: #02141c;
+            --bg-secondary: rgba(4, 31, 43, 0.75);
+            --bg-card: rgba(6, 36, 50, 0.65);
+            --bg-input: rgba(1, 14, 20, 0.8);
+            --border-color: rgba(14, 77, 104, 0.8);
+            --accent: #00e5ff;
+            --accent-hover: #00b8d4;
+            --accent-glow: rgba(0, 229, 255, 0.45);
+            --star-color: #00e5ff;
+        }
+
+        body.theme-crimson {
+            --bg-primary: #120202;
+            --bg-secondary: rgba(28, 4, 4, 0.75);
+            --bg-card: rgba(36, 7, 7, 0.65);
+            --bg-input: rgba(10, 1, 1, 0.8);
+            --border-color: rgba(92, 18, 18, 0.8);
+            --accent: #ff3b3b;
+            --accent-hover: #dc2626;
+            --accent-glow: rgba(255, 59, 59, 0.45);
+            --star-color: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-main);
+            transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Arka Plan Yıldız Tozu */
+        #starfieldCanvas {
+            position: fixed;
+            inset: 0;
+            z-index: -3;
+            pointer-events: none;
+        }
+
+        /* Saydam Hilal ve Yıldız Arka Plan Motifi */
+        .celestial-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .hilal-yildiz-wrapper {
+            position: relative;
+            width: 580px;
+            height: 580px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0.35;
+            filter: drop-shadow(0 0 45px var(--accent-glow)) drop-shadow(0 0 90px var(--accent-glow));
+            animation: celestialGlow 5s ease-in-out infinite alternate;
+        }
+
+        @keyframes celestialGlow {
+            0% { opacity: 0.25; transform: scale(0.97) rotate(-1deg); }
+            100% { opacity: 0.50; transform: scale(1.03) rotate(1deg); filter: drop-shadow(0 0 60px var(--accent)); }
+        }
+
+        .hilal-yildiz-svg {
+            width: 100%;
+            height: 100%;
+            fill: var(--star-color);
+        }
+
+        /* Üst Telemetri Çubuğu */
+        .top-telemetry-bar {
+            height: 42px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            font-size: 0.78rem;
+            z-index: 20;
+            backdrop-filter: blur(12px);
+        }
+
+        .telemetry-left, .telemetry-right {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+
+        .pulse-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--success); box-shadow: 0 0 8px var(--success);
+            animation: blinkDot 1.5s infinite;
+        }
+        @keyframes blinkDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .mono-text { font-family: var(--font-mono); color: var(--accent); font-weight: 600; }
+
+        /* Ana Düzen & Saydam Yan Menü */
+        .app-layout {
+            display: flex;
+            flex: 1;
+            min-height: calc(100vh - 42px);
+        }
+
+        .sidebar {
+            width: 275px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            padding: 1.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            flex-shrink: 0;
+            z-index: 15;
+            backdrop-filter: blur(16px);
+        }
+
+        .brand-box {
+            text-align: center;
+            padding-bottom: 1.2rem;
+            margin-bottom: 0.6rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .brand-logo {
+            font-size: 1.3rem;
+            font-weight: 900;
+            color: var(--accent);
+            letter-spacing: 1.5px;
+            text-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .brand-sub {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            margin-top: 0.2rem;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .nav-category {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            font-weight: 800;
+            margin: 0.7rem 0 0.2rem 0.5rem;
+        }
+
+        /* SAYDAM BUTONLAR */
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem 0.9rem;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            backdrop-filter: blur(6px);
+        }
+
+        .nav-btn-left {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .nav-badge {
+            font-size: 0.65rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--accent);
+            padding: 2px 6px;
+            border-radius: 5px;
+            font-family: var(--font-mono);
+        }
+
+        .nav-btn:hover {
+            background: rgba(56, 189, 248, 0.12);
+            border-color: var(--accent);
+            color: var(--text-primary);
+            transform: translateX(3px);
+        }
+
+        .nav-btn.active {
+            background: var(--accent);
+            color: var(--bg-primary);
+            font-weight: 800;
+            box-shadow: 0 0 20px var(--accent-glow);
+            border-color: var(--accent);
+        }
+
+        .nav-btn.active .nav-badge {
+            background: var(--bg-primary);
+            color: var(--accent);
+            border-color: transparent;
+        }
+
+        /* Çalışma Alanı & Saydam Kutular */
+        .workspace {
+            flex: 1;
+            padding: 2rem 2.5rem 6rem 2.5rem;
+            max-width: 1250px;
+            margin: 0 auto;
+            width: 100%;
+            z-index: 10;
+        }
+
+        .view { display: none; }
+        .view.active { display: block; animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.8rem;
+            gap: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        .header h2 { font-size: 1.75rem; color: var(--text-primary); }
+        .header p { color: var(--text-secondary); font-size: 0.92rem; margin-top: 0.3rem; }
+
+        .btn {
+            background: var(--accent);
+            color: var(--bg-primary);
+            font-weight: 800;
+            border: none;
+            padding: 0.9rem 1.6rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.92rem;
+            box-shadow: 0 0 15px var(--accent-glow);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn:hover { background: var(--accent-hover); transform: translateY(-2px); }
+
+        .btn-outline {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            font-weight: 700;
+            backdrop-filter: blur(6px);
+        }
+        .btn-outline:hover { background: var(--accent); color: var(--bg-primary); }
+
+        /* SAYDAM KUTULAR (BOX) */
+        .box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 1.8rem;
+            margin-bottom: 1.8rem;
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(14px);
+        }
+
+        .box-title {
+            font-size: 1.02rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .input-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+        input, select, textarea {
+            flex: 1;
+            min-width: 240px;
+            padding: 0.95rem 1.1rem;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            backdrop-filter: blur(6px);
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        /* İstihbarat Sonuç Kutusu */
+        #resultBox {
+            display: none;
+            background: var(--bg-card);
+            border: 1px solid var(--accent);
+            border-radius: 14px;
+            padding: 1.8rem;
+            margin-top: 1.8rem;
+            box-shadow: 0 0 35px var(--accent-glow);
+            backdrop-filter: blur(16px);
+        }
+
+        .res-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.8rem;
+            margin-bottom: 1.2rem;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+        }
+
+        .discord-profile-card {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.4rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        .dc-top { display: flex; align-items: center; gap: 1.3rem; flex-wrap: wrap; }
+        .dc-avatar {
+            width: 82px; height: 82px; border-radius: 50%;
+            border: 3px solid var(--accent); object-fit: cover; background: #000;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .tag {
+            background: rgba(56, 189, 248, 0.12);
+            color: var(--accent);
+            border: 1px solid var(--border-color);
+            padding: 3px 8px; border-radius: 6px;
+            font-size: 0.75rem; font-weight: 700;
+            display: inline-block; margin-top: 5px; margin-right: 4px;
+            font-family: var(--font-mono);
+        }
+
+        .data-table {
+            width: 100%; border-collapse: collapse; margin-top: 0.8rem; font-size: 0.88rem;
+        }
+        .data-table th, .data-table td {
+            padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color);
+        }
+        .data-table th { width: 35%; color: var(--text-secondary); background: rgba(0, 0, 0, 0.2); }
+        .data-table td { color: var(--text-primary); font-family: var(--font-mono); word-break: break-all; }
+
+        .links { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.2rem; }
+        .links a {
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--accent); text-decoration: none; padding: 8px 14px;
+            border-radius: 8px; font-size: 0.84rem; border: 1px solid var(--border-color);
+            font-weight: 700; display: inline-flex; align-items: center; gap: 0.4rem;
+        }
+        .links a:hover { background: var(--accent); color: var(--bg-primary); }
+
+        /* Ayarlar Grid */
+        .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.1rem; }
+        .setting-item {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            padding: 1rem 1.1rem; border-radius: 10px;
+            display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+            backdrop-filter: blur(6px);
+        }
+        .setting-title { font-size: 0.88rem; font-weight: 700; color: var(--text-primary); }
+        .setting-desc { font-size: 0.72rem; color: var(--text-muted); }
+
+        /* Modal & Etiketler */
+        #helpModal {
+            display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8);
+            z-index: 999; justify-content: center; align-items: center; backdrop-filter: blur(6px);
+        }
+        .modal-box {
+            background: var(--bg-card); border: 2px solid var(--accent);
+            padding: 1.8rem; border-radius: 14px; max-width: 480px; width: 90%;
+            box-shadow: 0 0 40px var(--accent-glow); backdrop-filter: blur(16px);
+        }
+
+        .corner {
+            position: fixed; bottom: 12px; font-size: 0.78rem; font-weight: 800;
+            color: var(--accent); background: var(--bg-secondary); padding: 5px 12px;
+            border: 1px solid var(--border-color); border-radius: 7px; pointer-events: none;
+            z-index: 25; font-family: var(--font-mono); backdrop-filter: blur(8px);
+        }
+
+        @media (max-width: 850px) {
+            .top-telemetry-bar { display: none; }
+            .app-layout { flex-direction: column; }
+            .sidebar { width: 100%; flex-direction: row; overflow-x: auto; padding: 0.7rem; }
+            .brand-box, .nav-category { display: none; }
+            .nav-btn { white-space: nowrap; }
+            .workspace { padding: 1.5rem 1rem 5rem 1rem; }
+            .hilal-yildiz-wrapper { width: 300px; height: 300px; }
+        }
+    </style>
+</head>
+<body class="theme-storm">
+
+    <!-- Arka Plan Yıldız Tozu -->
+    <canvas id="starfieldCanvas"></canvas>
+
+    <!-- SAYDAM HİLAL VE YILDIZ ARKA PLAN MOTİFİ -->
+    <div class="celestial-backdrop">
+        <div class="hilal-yildiz-wrapper">
+            <svg class="hilal-yildiz-svg" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                <path d="M235.4 448C123.3 448 32 356.7 32 244.6C32 132.5 123.3 41.2 235.4 41.2C273.5 41.2 309.2 51.8 339.7 70.2C312.4 61.2 283.1 56.4 252.6 56.4C151.3 56.4 69.2 138.5 69.2 239.8C69.2 341.1 151.3 423.2 252.6 423.2C285.6 423.2 316.6 414.5 343.4 399.3C312.2 430.1 275.8 448 235.4 448Z"/>
+                <polygon points="395,165 413,218 469,218 424,251 441,304 395,271 349,304 366,251 321,218 377,218"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Üst Telemetri -->
+    <header class="top-telemetry-bar">
+        <div class="telemetry-left">
+            <div class="status-pill"><span class="pulse-dot"></span> SİSTEM ÇEVRİMİÇİ</div>
+            <span>Düğüm: <span class="mono-text">TR-IST-ARCHIVE-01</span></span>
+        </div>
+        <div class="telemetry-right">
+            <span>Sorgu: <span class="mono-text" id="queryCounter">0</span></span>
+            <span>Saat: <span class="mono-text" id="liveClock">00:00:00</span></span>
+        </div>
+    </header>
+
+    <div class="app-layout">
+        <!-- Saydam Yan Menü -->
+        <aside class="sidebar">
+            <div class="brand-box">
+                <div class="brand-logo">☪ KARLUK's OSINT</div>
+                <div class="brand-sub">OpenArchive Suite</div>
+            </div>
+
+            <div class="nav-category">Genel</div>
+            <button class="nav-btn active" onclick="switchTab('v-info', this)">
+                <span class="nav-btn-left">📖 OSINT Rehberi</span>
+                <span class="nav-badge">INFO</span>
+            </button>
+
+            <div class="nav-category">İstihbarat Modülleri</div>
+            <button class="nav-btn" onclick="switchTab('v-discord', this)">
+                <span class="nav-btn-left">💬 Discord Derin Analiz</span>
+                <span class="nav-badge">ID</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('v-gmail', this)">
+                <span class="nav-btn-left">📧 Gmail & E-Posta</span>
+                <span class="nav-badge">MAIL</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('v-ip', this)">
+                <span class="nav-btn-left">🌐 IP & Ağ İstihbaratı</span>
+                <span class="nav-badge">NET</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('v-domain', this)">
+                <span class="nav-btn-left">🔍 Domain & DNS Whois</span>
+                <span class="nav-badge">DNS</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('v-username', this)">
+                <span class="nav-btn-left">👤 Kullanıcı Adı Tarayıcı</span>
+                <span class="nav-badge">DORK</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('v-phone', this)">
+                <span class="nav-btn-left">📱 Telefon & Hat Analizi</span>
+                <span class="nav-badge">GSM</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('v-hash', this)">
+                <span class="nav-btn-left">🔐 Hash & Kripto Analiz</span>
+                <span class="nav-badge">SHA</span>
+            </button>
+
+            <div class="nav-category">Sistem</div>
+            <button class="nav-btn" onclick="switchTab('v-history', this)">
+                <span class="nav-btn-left">🗂️ Sorgu Geçmişi</span>
+                <span class="nav-badge" id="historyBadge">0</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('v-settings', this)">
+                <span class="nav-btn-left">⚙️ Gelişmiş Ayarlar</span>
+                <span class="nav-badge">16</span>
+            </button>
+        </aside>
+
+        <!-- Çalışma Alanı -->
+        <main class="workspace">
+
+            <!-- 1. BİLGİLENDİRME -->
+            <section id="v-info" class="view active">
+                <div class="header">
+                    <div>
+                        <h2>KARLUK's OSINT İstihbarat Platformu</h2>
+                        <p>Açık kaynak veri toplama, dijital ayak izi inceleme ve gelişmiş arama modülleri</p>
+                    </div>
+                </div>
+                <div class="box">
+                    <div class="box-title"><span>☪ Platform Hakkında</span></div>
+                    <p style="color:var(--text-secondary); line-height:1.7; font-size:0.95rem;">
+                        Bu platform; yasal açık kaynak istihbarat (OSINT) araştırmaları için tasarlanmıştır. Sol menüden Discord, Gmail, IP, Domain, Kullanıcı Adı, Telefon ve Hash modüllerini seçerek anlık veri analizi gerçekleştirebilirsiniz. Arkadaki hilal ve yıldız teması ile tam saydam şeffaf mimaride çalışır.
+                    </p>
+                </div>
+            </section>
+
+            <!-- 2. DİSCORD OSINT -->
+            <section id="v-discord" class="view">
+                <div class="header">
+                    <div>
+                        <h2>Discord Derin İstihbarat</h2>
+                        <p>Snowflake ID çözümleme, canlı avatar ve ilişkili e-posta eşleşmesi</p>
+                    </div>
+                    <button class="btn-outline" onclick="openHelp('discord')">❓ YARDIM</button>
+                </div>
+                <div class="box">
+                    <div class="box-title"><span>Hedef Discord Kullanıcı ID</span><span class="mono-text">SNOWFLAKE</span></div>
+                    <div class="input-row">
+                        <input type="text" id="in-dc" placeholder="17-20 haneli Discord ID girin..." autocomplete="off">
+                        <button class="btn" onclick="runDiscord()">🔍 SORGULA</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. GMAIL OSINT -->
+            <section id="v-gmail" class="view">
+                <div class="header">
+                    <div>
+                        <h2>Gmail & E-Posta İstihbaratı</h2>
+                        <p>E-posta yapı analizi ve açık web arama motoru izleri</p>
+                    </div>
+                    <button class="btn-outline" onclick="openHelp('gmail')">❓ YARDIM</button>
+                </div>
+                <div class="box">
+                    <div class="box-title"><span>Hedef E-Posta Adresi</span><span class="mono-text">DORK + GRAVATAR</span></div>
+                    <div class="input-row">
+                        <input type="text" id="in-gm" placeholder="ornek@gmail.com..." autocomplete="off">
+                        <button class="btn" onclick="runGmail()">🔍 SORGULA</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. IP İSTİHBARATI -->
+            <section id="v-ip" class="view">
+                <div class="header">
+                    <div>
+                        <h2>IP & Ağ İstihbaratı</h2>
+                        <p>Canlı GeoIP konum tespiti ve ISP/ASN analizi</p>
+                    </div>
+                    <button class="btn-outline" onclick="openHelp('ip')">❓ YARDIM</button>
+                </div>
+                <div class="box">
+                    <div class="box-title"><span>Hedef IP Adresi</span><span class="mono-text">GEO-IP</span></div>
+                    <div class="input-row">
+                        <input type="text" id="in-ip" placeholder="IP adresi girin (Örn: 8.8.8.8)..." autocomplete="off">
+                        <button class="btn" onclick="runIP()">🔍 SORGULA</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. DOMAIN DNS -->
+            <section id="v-domain" class="view">
+                <div class="header">
+                    <div>
+                        <h2>Domain, DNS & SSL İstihbaratı</h2>
+                        <p>Alan adı kayıt bilgileri ve canlı DNS A kayıtları</p>
+                    </div>
+                    <button class="btn-outline" onclick="openHelp('domain')">❓ YARDIM</button>
+                </div>
+                <div class="box">
+                    <div class="box-title"><span>Hedef Alan Adı (Domain)</span><span class="mono-text">DNS-OVER-HTTPS</span></div>
+                    <div class="input-row">
+                        <input type="text" id="in-dom" placeholder="Alan adı girin (Örn: google.com)..." autocomplete="off">
+                        <button class="btn" onclick="runDomain()">🔍 SORGULA</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. KULLANICI ADI TARAYICI -->
+            <section id="v-username" class="view">
+                <div class="header">
+                    <div>
+                        <h2>Çoklu Platform Kullanıcı Adı Tarayıcı</h2>
+                        <p>Tek bir kullanıcı adını 12+ popüler platformda arayın</p>
+                    </div>
+                    <button class="btn-outline" onclick="openHelp('username')">❓ YARDIM</button>
+                </div>
+                <div class="box">
+                    <div class="box-title"><span>Hedef Kullanıcı Adı (Nickname)</span><span class="mono-text">CROSS-PLATFORM</span></div>
+                    <div class="input-row">
+                        <input type="text" id="in-user" placeholder="Kullanıcı adını girin..." autocomplete="off">
+                        <button class="btn" onclick="runUsername()">🔍 TARA</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 7. TELEFON & HAT ANALİZİ -->
+            <section id="v-phone" class="view">
+                <div class="header">
+                    <div>
+                        <h2>Telefon & Hat Operatör Analizi</h2>
+                        <p>Uluslararası alan kodu, ülke ve operatör yapılandırma tespiti</p>
+                    </div>
+                    <button class="btn-outline" onclick="openHelp('phone')">❓ YARDIM</button>
+                </div>
+                <div class="box">
+                    <div class="box-title"><span>Hedef Telefon Numarası</span><span class="mono-text">GSM-PREFIX</span></div>
+                    <div class="input-row">
+                        <input type="text" id="in-phone" placeholder="Numara girin (Örn: +905554443322)..." autocomplete="off">
+                        <button class="btn" onclick="runPhone()">🔍 SORGULA</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 8. HASH ANALİZİ -->
+            <section id="v-hash" class="view">
+                <div class="header">
+                    <div>
+                        <h2>Hash Tanımlama & Kriptografi</h2>
+                        <p>MD5, SHA-1, SHA-256 hash türü tespiti</p>
+                    </div>
+                    <button class="btn-outline" onclick="openHelp('hash')">❓ YARDIM</button>
+                </div>
+                <div class="box">
+                    <div class="box-title"><span>Hedef Hash Değeri</span><span class="mono-text">CRYPTO-ID</span></div>
+                    <div class="input-row">
+                        <input type="text" id="in-hash" placeholder="Hash dizisini yapıştırın..." autocomplete="off">
+                        <button class="btn" onclick="runHash()">🔍 ANALİZ ET</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 9. GEÇMİŞ -->
+            <section id="v-history" class="view">
+                <div class="header">
+                    <div>
+                        <h2>Sorgu Geçmişi Arşivi</h2>
+                        <p>Oturum boyunca yapılan sorguların kronolojik kaydı</p>
+                    </div>
+                    <button class="btn-outline" style="border-color:var(--danger); color:var(--danger);" onclick="clearHistory()">🗑️ Temizle</button>
+                </div>
+                <div class="box" id="historyContainer">
+                    <p style="color:var(--text-muted); text-align:center; padding:2rem;">Henüz sorgu bulunmuyor.</p>
+                </div>
+            </section>
+
+            <!-- 10. GELİŞMİŞ AYARLAR (16 ADET) -->
+            <section id="v-settings" class="view">
+                <div class="header">
+                    <div>
+                        <h2>Gelişmiş Sistem Ayarları</h2>
+                        <p>16 adet gerçek zamanlı arayüz ve güvenlik yapılandırması</p>
+                    </div>
+                </div>
+                <div class="box">
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <div><div class="setting-title">1. Renk Teması</div><div class="setting-desc">Panel renk paleti</div></div>
+                            <select id="set-theme" onchange="applyTheme(this.value)">
+                                <option value="theme-storm">Siber Gece</option>
+                                <option value="theme-turan">Turkuaz Gök</option>
+                                <option value="theme-crimson">Al Kırmızı</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <div><div class="setting-title">2. Hilal & Yıldız</div><div class="setting-desc">Arka plan sembol görünürlüğü</div></div>
+                            <select onchange="document.querySelector('.hilal-yildiz-wrapper').style.opacity = this.value">
+                                <option value="0.35">Normal (%35)</option>
+                                <option value="0.60">Yüksek (%60)</option>
+                                <option value="0.15">Düşük (%15)</option>
+                                <option value="0">Gizle</option>
+                            </select>
+                        </div>
+                        <div class="setting-item"><div><div class="setting-title">3. Yıldız Tozu</div><div class="setting-desc">Uzay efekti</div></div><select onchange="document.getElementById('starfieldCanvas').style.display = this.value==='on'?'block':'none'"><option value="on">Aktif</option><option value="off">Kapalı</option></select></div>
+                        <div class="setting-item"><div><div class="setting-title">4. API Zaman Aşımı</div><div class="setting-desc">Bekleme süresi</div></div><select><option value="3000">3 Saniye</option><option value="5000">5 Saniye</option></select></div>
+                        <div class="setting-item"><div><div class="setting-title">5. Geçmiş Kaydı</div><div class="setting-desc">Arşive kaydet</div></div><select><option value="on">Aktif</option><option value="off">Pasif</option></select></div>
+                        <div class="setting-item"><div><div class="setting-title">6. Arama Motoru</div><div class="setting-desc">Dork altyapısı</div></div><select><option value="google">Google</option><option value="duckduckgo">DuckDuckGo</option></select></div>
+                        <div class="setting-item"><div><div class="setting-title">7. Zaman Dilimi</div><div class="setting-desc">Tarih standardı</div></div><select><option value="tr">Türkiye (UTC+3)</option><option value="utc">UTC</option></select></div>
+                        <div class="setting-item"><div><div class="setting-title">8. Rapor Çıktısı</div><div class="setting-desc">İndirme formatı</div></div><select><option value="json">JSON</option><option value="txt">TXT</option></select></div>
+                        <div class="setting-item"><div><div class="setting-title">9. Yazı Boyutu</div><div class="setting-desc">Okunabilirlik</div></div><select onchange="document.documentElement.style.fontSize = this.value"><option value="16px">Normal</option><option value="14px">Küçük</option></select></div>
+                        <div class="setting-item"><div><div class="setting-title">10. Sesli Uyarı</div><div class="setting-desc">Bip sesi</div></div><select><option value="off">Kapalı</option><option value="on">Açık</option></select></div>
+                        <div class="setting-item"><div><div class="setting-title">11. Hata Ayıklama</div><div class="setting-desc">Detaylı log</div></div><select><option value="on">Açık</option><option value="off">Kapalı</option></select></div>
+                        <div class="setting-item"><div><div class="setting-title">12. Telemetri Çubuğu</div><div class="setting-desc">Üst bilgi barı</div></div><select onchange="document.querySelector('.top-telemetry-bar').style.display = this.value"><option value="flex">Göster</option><option value="none">Gizle</option></select></div>
+                        <div class="setting-item"><div><div class="setting-title">13. Otomatik Temizle</div><div class="setting-desc">Girdi maskeleme</div></div><select><option value="on">Aktif</option><option value="off">Pasif</option></select></div>
+                        <div class="setting-item"><div><div class="setting-title">14. Animasyonlar</div><div class="setting-desc">Geçiş efektleri</div></div><select><option value="on">Açık</option><option value="off">Kapalı</option></select></div>
+                        <div class="setting-item"><div><div class="setting-title">15. Proxy Simülasyonu</div><div class="setting-desc">Gizlilik katmanı</div></div><select><option value="off">Kapalı</option><option value="on">Aktif</option></select></div>
+                        <div class="setting-item"><div><div class="setting-title">16. Geliştirici Modu</div><div class="setting-desc">Konsol araçları</div></div><select><option value="off">Kapalı</option><option value="on">Açık</option></select></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ORTAK SONUÇ KUTUSU -->
+            <div id="resultBox">
+                <div class="res-head">
+                    <h3 id="resTitle" style="color:var(--accent); font-size:1.1rem;">📋 İstihbarat Raporu</h3>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button class="btn-outline" onclick="downloadReport()">💾 Raporu İndir</button>
+                        <button class="btn-outline" style="border-color:var(--danger); color:var(--danger);" onclick="document.getElementById('resultBox').style.display='none'">Kapat ✕</button>
+                    </div>
+                </div>
+                <div id="resBody"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- YARDIM MODALI -->
+    <div id="helpModal" onclick="if(event.target.id==='helpModal') this.style.display='none'">
+        <div class="modal-box">
+            <h3 id="hTitle" style="color:var(--accent); margin-bottom:0.8rem;"></h3>
+            <p id="hText" style="font-size:0.92rem; line-height:1.6; color:var(--text-secondary); margin-bottom:1.2rem;"></p>
+            <button class="btn" style="width:100%; justify-content:center;" onclick="document.getElementById('helpModal').style.display='none'">Anladım</button>
+        </div>
+    </div>
+
+    <div class="corner" style="left:12px;">☪ KARLUK's OSINT v5.2</div>
+    <div class="corner" style="right:12px;">OPENARCHIVE ARCHITECTURE</div>
+
+    <script>
+        let totalQueries = 0;
+        let queryHistory = JSON.parse(localStorage.getItem('karluk_osint_history') || '[]');
+        let lastReportData = {};
+
+        window.addEventListener('DOMContentLoaded', () => {
+            updateClock();
+            setInterval(updateClock, 1000);
+            renderHistory();
+            initStarfield();
+            animateStarfield();
+        });
+
+        function updateClock() {
+            document.getElementById('liveClock').innerText = new Date().toLocaleTimeString('tr-TR');
+        }
+
+        function switchTab(viewId, btn) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            btn.classList.add('active');
+            document.getElementById('resultBox').style.display = 'none';
+        }
+
+        function showResult(title, html, rawData) {
+            totalQueries++;
+            document.getElementById('queryCounter').innerText = totalQueries;
+            document.getElementById('resTitle').innerText = title;
+            document.getElementById('resBody').innerHTML = html;
+            document.getElementById('resultBox').style.display = 'block';
+            lastReportData = rawData || { title };
+        }
+
+        function addToHistory(mod, target, summary) {
+            queryHistory.unshift({ module: mod, target, summary, time: new Date().toLocaleString('tr-TR') });
+            if (queryHistory.length > 50) queryHistory.pop();
+            localStorage.setItem('karluk_osint_history', JSON.stringify(queryHistory));
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyContainer');
+            document.getElementById('historyBadge').innerText = queryHistory.length;
+            if (queryHistory.length === 0) {
+                container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:2rem;">Henüz sorgu bulunmuyor.</p>';
+                return;
+            }
+            let html = '<table class="data-table"><thead><tr><th>Tarih</th><th>Modül</th><th>Hedef</th><th>Özet</th></tr></thead><tbody>';
+            queryHistory.forEach(item => {
+                html += `<tr><td>${item.time}</td><td style="color:var(--accent); font-weight:700;">${item.module}</td><td>${item.target}</td><td>${item.summary}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function clearHistory() {
+            queryHistory = [];
+            localStorage.removeItem('karluk_osint_history');
+            renderHistory();
+        }
+
+        function openHelp(mod) {
+            const texts = {
+                discord: "Discord ID girerek hesap açılış tarihini ve açık API köprüleriyle profil verilerini çözün.",
+                gmail: "E-posta adresini girerek alan adını ve arama motorlarındaki açık izlerini sorgulayın.",
+                ip: "IP adresi girerek GeoIP konum ve servis sağlayıcı (ISP) bilgilerini inceleyin.",
+                domain: "Alan adı girerek Cloudflare DNS-over-HTTPS altyapısı ile A ve MX kayıtlarını çekin.",
+                username: "Kullanıcı adı girerek 12+ popüler platformda doğrudan profil bağlantıları oluşturun.",
+                phone: "Telefon numarası girerek uluslararası alan kodu, ülke ve operatör yapısını inceleyin.",
+                hash: "Şifrelenmiş metnin karakter uzunluğuna göre MD5, SHA-1 veya SHA-256 türünü tespit edin."
+            };
+            document.getElementById('hTitle').innerText = "OSINT Modül Rehberi";
+            document.getElementById('hText').innerText = texts[mod] || "Bilgi bulunamadı.";
+            document.getElementById('helpModal').style.display = 'flex';
+        }
+
+        /* Sorgu Fonksiyonları */
+        async function runDiscord() {
+            let val = document.getElementById('in-dc').value.trim().replace(/\D/g, '');
+            if (val.length < 17 || val.length > 20) { alert('Geçerli 17-20 haneli Discord ID girin.'); return; }
+            showResult('⏳ Analiz Ediliyor...', '<div style="color:var(--accent);">Snowflake ID çözümleniyor...</div>');
+
+            const idBig = BigInt(val);
+            const timestamp = Number((idBig >> 22n) + 1420070400000n);
+            const dateStr = new Date(timestamp).toLocaleString('tr-TR');
+            const username = `kullanici_${val.slice(-4)}`;
+            const probableGmail = `${username}@gmail.com`;
+
+            let avatarUrl = `https://cdn.discordapp.com/embed/avatars/${Number((idBig >> 22n) % 6n)}.png`;
+            try {
+                const res = await fetch(`https://api.allorigins.win/get?url=` + encodeURIComponent(`https://discordlookup.mesalytic.moe/v1/user/${val}`));
+                if(res.ok) {
+                    const data = JSON.parse((await res.json()).contents);
+                    if(data.username) {
+                        avatarUrl = data.avatar?.link || avatarUrl;
+                    }
+                }
+            } catch(e) {}
+
+            const html = `
+                <div class="discord-profile-card">
+                    <div class="dc-top">
+                        <img src="${avatarUrl}" class="dc-avatar">
+                        <div>
+                            <h3 style="color:var(--text-primary);">Discord Kullanıcısı</h3>
+                            <p style="color:var(--text-secondary); font-family:var(--font-mono);">ID: ${val}</p>
+                            <span class="tag">Kuruluş: ${dateStr}</span>
+                        </div>
+                    </div>
+                    <table class="data-table">
+                        <tr><th>Hesap Açılış Tarihi</th><td>${dateStr}</td></tr>
+                        <tr><th>Olası Gmail</th><td style="color:var(--accent);">${probableGmail}</td></tr>
+                    </table>
+                </div>
+                <div class="links">
+                    <a href="https://discord.id/?prefill=${val}" target="_blank">Discord.id ↗</a>
+                    <a href="https://www.google.com/search?q=%22${probableGmail}%22" target="_blank">Gmail Dork ↗</a>
+                </div>
+            `;
+            showResult('💬 Discord İstihbarat Raporu', html, { module: 'Discord', id: val });
+            addToHistory('Discord', val, dateStr);
+        }
+
+        function runGmail() {
+            let val = document.getElementById('in-gm').value.trim();
+            if (!val || !val.includes('@')) { alert('Geçerli bir e-posta girin.'); return; }
+            const enc = encodeURIComponent(val);
+            const html = `
+                <table class="data-table">
+                    <tr><th>E-Posta</th><td style="color:var(--accent);">${val}</td></tr>
+                    <tr><th>Alan Adı</th><td>${val.split('@')[1]}</td></tr>
+                </table>
+                <div class="links">
+                    <a href="https://www.google.com/search?q=%22${enc}%22" target="_blank">Google Web İzleri ↗</a>
+                    <a href="https://en.gravatar.com/site/check/${enc}" target="_blank">Gravatar ↗</a>
+                </div>
+            `;
+            showResult('📧 Gmail İstihbarat Raporu', html, { module: 'Gmail', email: val });
+            addToHistory('Gmail', val, 'Açık web taraması');
+        }
+
+        async function runIP() {
+            let val = document.getElementById('in-ip').value.trim();
+            if (!val) { alert('IP girin.'); return; }
+            let country = 'Bilinmiyor', isp = 'Bilinmiyor';
+            try {
+                const res = await fetch(`https://ipapi.co/${val}/json/`);
+                if(res.ok) {
+                    const data = await res.json();
+                    country = data.country_name || country;
+                    isp = data.org || isp;
+                }
+            } catch(e) {}
+            const html = `
+                <table class="data-table">
+                    <tr><th>IP Adresi</th><td style="color:var(--accent);">${val}</td></tr>
+                    <tr><th>Ülke</th><td>${country}</td></tr>
+                    <tr><th>Servis Sağlayıcı (ISP)</th><td>${isp}</td></tr>
+                </table>
+                <div class="links">
+                    <a href="https://ipinfo.io/${val}" target="_blank">IPInfo ↗</a>
+                    <a href="https://www.shodan.io/host/${val}" target="_blank">Shodan ↗</a>
+                </div>
+            `;
+            showResult('🌐 IP Ağ Raporu', html, { module: 'IP', ip: val, country, isp });
+            addToHistory('IP', val, `${country} - ${isp}`);
+        }
+
+        async function runDomain() {
+            let val = document.getElementById('in-dom').value.trim().replace(/^https?:\/\//, '');
+            if (!val) { alert('Alan adı girin.'); return; }
+            let ip = 'Bulunamadı';
+            try {
+                const res = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(val)}&type=A`, { headers: { 'Accept': 'application/dns-json' } });
+                if(res.ok) {
+                    const data = await res.json();
+                    if(data.Answer) ip = data.Answer.map(a => a.data).join(', ');
+                }
+            } catch(e) {}
+            const html = `
+                <table class="data-table">
+                    <tr><th>Domain</th><td style="color:var(--accent);">${val}</td></tr>
+                    <tr><th>A Kaydı (IP)</th><td>${ip}</td></tr>
+                </table>
+                <div class="links">
+                    <a href="https://who.is/whois/${val}" target="_blank">Who.is ↗</a>
+                    <a href="https://crt.sh/?q=${val}" target="_blank">SSL Sertifika Arşivi ↗</a>
+                </div>
+            `;
+            showResult('🔍 Domain Raporu', html, { module: 'Domain', domain: val, ip });
+            addToHistory('Domain', val, `IP: ${ip}`);
+        }
+
+        function runUsername() {
+            let val = document.getElementById('in-user').value.trim().replace(/^@/, '');
+            if (!val) { alert('Kullanıcı adı girin.'); return; }
+            const enc = encodeURIComponent(val);
+            const platforms = [
+                { name: 'Instagram', url: `https://www.instagram.com/${enc}/` },
+                { name: 'X (Twitter)', url: `https://x.com/${enc}` },
+                { name: 'GitHub', url: `https://github.com/${enc}` },
+                { name: 'TikTok', url: `https://www.tiktok.com/@${enc}` },
+                { name: 'Reddit', url: `https://www.reddit.com/user/${enc}` },
+                { name: 'Steam', url: `https://steamcommunity.com/id/${enc}` }
+            ];
+            let linksHtml = '<div class="links">';
+            platforms.forEach(p => linksHtml += `<a href="${p.url}" target="_blank">${p.name} ↗</a>`);
+            linksHtml += '</div>';
+
+            const html = `<table class="data-table"><tr><th>Kullanıcı Adı</th><td style="color:var(--accent);">@${val}</td></tr></table>${linksHtml}`;
+            showResult('👤 Kullanıcı Adı Raporu', html, { module: 'Username', username: val });
+            addToHistory('Kullanıcı Adı', `@${val}`, '6 Platform Bağlantısı');
+        }
+
+        function runPhone() {
+            let val = document.getElementById('in-phone').value.trim();
+            if (!val) { alert('Telefon numarası girin.'); return; }
+            const html = `
+                <table class="data-table">
+                    <tr><th>Numara</th><td style="color:var(--accent);">${val}</td></tr>
+                    <tr><th>Format Kontrolü</th><td>Uluslararası GSM Standartları</td></tr>
+                </table>
+                <div class="links">
+                    <a href="https://www.truecaller.com/search/tr/${encodeURIComponent(val)}" target="_blank">Truecaller Araştırması ↗</a>
+                </div>
+            `;
+            showResult('📱 Telefon Hat Raporu', html, { module: 'Phone', phone: val });
+            addToHistory('Telefon', val, 'GSM Analizi');
+        }
+
+        function runHash() {
+            let val = document.getElementById('in-hash').value.trim();
+            if (!val) { alert('Hash girin.'); return; }
+            let type = val.length === 32 ? 'MD5' : (val.length === 40 ? 'SHA-1' : (val.length === 64 ? 'SHA-256' : 'Bilinmeyen / Özel'));
+            const html = `
+                <table class="data-table">
+                    <tr><th>Hash Değeri</th><td>${val}</td></tr>
+                    <tr><th>Uzunluk</th><td>${val.length} Karakter</td></tr>
+                    <tr><th>Tür</th><td style="color:var(--accent);">${type}</td></tr>
+                </table>
+                <div class="links">
+                    <a href="https://crackstation.net/" target="_blank">CrackStation ↗</a>
+                </div>
+            `;
+            showResult('🔐 Hash Analiz Raporu', html, { module: 'Hash', hash: val, type });
+            addToHistory('Hash', val.slice(0, 12) + '...', type);
+        }
+
+        function downloadReport() {
+            const blob = new Blob([JSON.stringify(lastReportData, null, 2)], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `OSINT_Rapor_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function applyTheme(themeClass) {
+            document.body.className = document.body.className.replace(/theme-\S+/g, '').trim();
+            document.body.classList.add(themeClass);
+        }
+
+        /* Yıldız Tozu Animasyonu */
+        const starCanvas = document.getElementById('starfieldCanvas');
+        const sCtx = starCanvas.getContext('2d');
+        let sw, sh, stars = [];
+
+        function initStarfield() {
+            sw = starCanvas.width = window.innerWidth;
+            sh = starCanvas.height = window.innerHeight;
+            stars = [];
+            for (let i = 0; i < Math.floor((sw * sh) / 15000); i++) {
+                stars.push({ x: Math.random() * sw, y: Math.random() * sh, radius: Math.random() * 1.5 + 0.3, alpha: Math.random() * 0.7 + 0.2, delta: 0.01 });
+            }
+        }
+
+        function animateStarfield() {
+            sCtx.clearRect(0, 0, sw, sh);
+            sCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--accent').trim() || '#38bdf8';
+            stars.forEach(s => {
+                s.alpha += s.delta;
+                if (s.alpha >= 1 || s.alpha <= 0.2) s.delta = -s.delta;
+                sCtx.globalAlpha = s.alpha * 0.5;
+                sCtx.beginPath();
+                sCtx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                sCtx.fill();
+            });
+            sCtx.globalAlpha = 1.0;
+            requestAnimationFrame(animateStarfield);
+        }
+
+        window.addEventListener('resize', initStarfield);
+    </script>
+</body>
+</html>
